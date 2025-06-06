@@ -4,14 +4,13 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-surface-200;
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-surface-900;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-
   html {
     scroll-behavior: smooth;
   }
