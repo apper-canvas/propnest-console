@@ -33,7 +33,7 @@ const Home = () => {
                 <h1 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
                   PropNest
                 </h1>
-                <p className="text-xs text-surface-600 hidden sm:block">Premium Real Estate 2</p>
+                <p className="text-xs text-surface-600 hidden sm:block">Premium Real Estate 3</p>
               </div>
             </div>
             
