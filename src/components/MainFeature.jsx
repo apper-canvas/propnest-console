@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-toastify'
 import ApperIcon from './ApperIcon'
-
+import { PropertyService } from '../services/api/propertyService'
 const MainFeature = () => {
   const [activeTab, setActiveTab] = useState('search')
   const [searchFilters, setSearchFilters] = useState({
@@ -25,81 +25,54 @@ const MainFeature = () => {
     description: '',
     listingType: 'sale',
     amenities: []
-  })
+})
 
   const [savedProperties, setSavedProperties] = useState([])
   const [searchResults, setSearchResults] = useState([])
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  // Sample properties data
-  const sampleProperties = [
-    {
-      id: 1,
-      title: "Modern Downtown Loft",
-      price: 850000,
-      propertyType: "apartment",
-      bedrooms: 2,
-      bathrooms: 2,
-      squareFootage: 1200,
-      address: "123 Urban St, Downtown",
-      listingType: "sale",
-      image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400",
-      amenities: ["Gym", "Parking", "Balcony"]
-    },
-    {
-      id: 2,
-      title: "Suburban Family Home",
-      price: 3200,
-      propertyType: "house",
-      bedrooms: 4,
-      bathrooms: 3,
-      squareFootage: 2500,
-      address: "456 Maple Ave, Suburbia",
-      listingType: "rent",
-      image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400",
-      amenities: ["Garden", "Garage", "Pool"]
-    },
-    {
-      id: 3,
-      title: "Luxury Penthouse Suite",
-      price: 2500000,
-      propertyType: "apartment",
-      bedrooms: 3,
-      bathrooms: 3,
-      squareFootage: 1800,
-      address: "789 Sky Tower, Uptown",
-      listingType: "sale",
-      image: "https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=400",
-      amenities: ["Rooftop", "Concierge", "Gym", "Spa"]
+  // Load properties on component mount
+  useEffect(() => {
+    const loadProperties = async () => {
+      setLoading(true)
+      try {
+        const result = await PropertyService.getAll()
+        setProperties(result)
+        setError(null)
+      } catch (err) {
+        setError(err.message)
+        console.error('Error loading properties:', err)
+        toast.error('Failed to load properties')
+        setProperties([])
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
-
+    loadProperties()
+  }, [])
   const propertyTypes = ['house', 'apartment', 'condo', 'townhouse', 'villa']
   const amenitiesList = ['Gym', 'Pool', 'Parking', 'Garden', 'Balcony', 'Garage', 'Rooftop', 'Concierge', 'Spa', 'Fireplace']
 
-  const handleSearch = () => {
-    // Filter properties based on search criteria
-    const filtered = sampleProperties.filter(property => {
-      const matchesLocation = !searchFilters.location || 
-        property.address.toLowerCase().includes(searchFilters.location.toLowerCase())
-      const matchesPrice = property.price >= searchFilters.priceRange[0] && 
-        property.price <= searchFilters.priceRange[1]
-      const matchesType = !searchFilters.propertyType || 
-        property.propertyType === searchFilters.propertyType
-      const matchesBedrooms = !searchFilters.bedrooms || 
-        property.bedrooms >= parseInt(searchFilters.bedrooms)
-      const matchesBathrooms = !searchFilters.bathrooms || 
-        property.bathrooms >= parseInt(searchFilters.bathrooms)
-      const matchesListingType = property.listingType === searchFilters.listingType
-
-      return matchesLocation && matchesPrice && matchesType && 
-             matchesBedrooms && matchesBathrooms && matchesListingType
-    })
-
-    setSearchResults(filtered)
-    toast.success(`Found ${filtered.length} properties matching your criteria`)
+const handleSearch = async () => {
+    setLoading(true)
+    try {
+      const filtered = await PropertyService.getAll(searchFilters)
+      setSearchResults(filtered)
+      toast.success(`Found ${filtered.length} properties matching your criteria`)
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+      console.error('Error searching properties:', err)
+      toast.error('Search failed. Please try again.')
+      setSearchResults([])
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handlePropertySubmit = (e) => {
+const handlePropertySubmit = async (e) => {
     e.preventDefault()
     
     // Validate required fields
@@ -108,33 +81,36 @@ const MainFeature = () => {
       return
     }
 
-    // Simulate property creation
-    const property = {
-      ...newProperty,
-      id: Date.now(),
-      price: parseInt(newProperty.price),
-      bedrooms: parseInt(newProperty.bedrooms) || 0,
-      bathrooms: parseInt(newProperty.bathrooms) || 0,
-      squareFootage: parseInt(newProperty.squareFootage) || 0,
-      image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400",
-      createdAt: new Date()
+    setLoading(true)
+    try {
+      const createdProperty = await PropertyService.create(newProperty)
+      
+      // Update local properties list
+      setProperties(prev => [...prev, createdProperty])
+      
+      toast.success('Property listed successfully!')
+      
+      // Reset form
+      setNewProperty({
+        title: '',
+        price: '',
+        propertyType: 'house',
+        bedrooms: '',
+        bathrooms: '',
+        squareFootage: '',
+        address: '',
+        description: '',
+        listingType: 'sale',
+        amenities: []
+      })
+      setError(null)
+    } catch (err) {
+      setError(err.message)
+      console.error('Error creating property:', err)
+      toast.error('Failed to list property. Please try again.')
+    } finally {
+      setLoading(false)
     }
-
-    toast.success('Property listed successfully!')
-    
-    // Reset form
-    setNewProperty({
-      title: '',
-      price: '',
-      propertyType: 'house',
-      bedrooms: '',
-      bathrooms: '',
-      squareFootage: '',
-      address: '',
-      description: '',
-      listingType: 'sale',
-      amenities: []
-    })
   }
 
   const toggleSaveProperty = (property) => {
@@ -392,12 +368,22 @@ const MainFeature = () => {
                   </div>
                 </div>
                 
-                <button
+<button
                   onClick={handleSearch}
-                  className="w-full sm:w-auto action-button action-button-primary"
+                  disabled={loading}
+                  className="w-full sm:w-auto action-button action-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ApperIcon name="Search" className="w-4 h-4 mr-2" />
-                  Search Properties
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <ApperIcon name="Search" className="w-4 h-4 mr-2" />
+                      Search Properties
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -417,17 +403,44 @@ const MainFeature = () => {
                 </div>
               )}
 
-              {/* Default Properties Display */}
+{/* Default Properties Display */}
               {searchResults.length === 0 && (
                 <div>
                   <h4 className="text-xl lg:text-2xl font-bold text-surface-900 mb-6">
                     Featured Properties
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                    {sampleProperties.map((property) => (
-                      <PropertyCard key={property.id} property={property} />
-                    ))}
-                  </div>
+                  {loading && (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-4 text-surface-600">Loading properties...</p>
+                    </div>
+                  )}
+                  {error && (
+                    <div className="text-center py-8">
+                      <p className="text-red-600 mb-4">Error loading properties: {error}</p>
+                      <button 
+                        onClick={() => window.location.reload()} 
+                        className="action-button action-button-primary"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                  {!loading && !error && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                      {properties.map((property) => (
+                        <PropertyCard key={property.id} property={property} />
+                      ))}
+                    </div>
+                  )}
+                  {!loading && !error && properties.length === 0 && (
+                    <div className="text-center py-12">
+                      <div className="w-24 h-24 bg-surface-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                        <ApperIcon name="Building2" className="w-12 h-12 text-surface-400" />
+                      </div>
+                      <p className="text-surface-600 mb-6">No properties available yet.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -582,13 +595,23 @@ const MainFeature = () => {
                     </div>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row gap-4 pt-6">
+<div className="flex flex-col sm:flex-row gap-4 pt-6">
                     <button
                       type="submit"
-                      className="flex-1 action-button action-button-primary"
+                      disabled={loading}
+                      className="flex-1 action-button action-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <ApperIcon name="Plus" className="w-4 h-4 mr-2" />
-                      List Property
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <ApperIcon name="Plus" className="w-4 h-4 mr-2" />
+                          List Property
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
